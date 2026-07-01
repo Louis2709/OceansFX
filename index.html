@@ -255,5 +255,44 @@ git push origin main
   // If you want to test without a file, uncomment:
   // simulateAnalysis(null);
 </script>
+  <!-- other scripts above -->
+<script>
+  // restore persisted history if you used localStorage
+  (function restoreHistory() {
+    try {
+      const raw = localStorage.getItem('tradebuddy_history');
+      if (raw) window.tradebuddyHistory = JSON.parse(raw);
+    } catch (e) { window.tradebuddyHistory = []; }
+  })();
+
+  // ensure history container exists
+  window.tradebuddyHistory = window.tradebuddyHistory || [];
+
+  // getLatestAnalysis returns the most recent analysis object or null
+  window.getLatestAnalysis = function() {
+    if (!window.tradebuddyHistory || window.tradebuddyHistory.length === 0) return null;
+    return window.tradebuddyHistory[0];
+  };
+
+  // optional helper to format the object for download
+  window.formatAnalysisForDownload = function(obj) {
+    if (!obj) return null;
+    return {
+      id: obj.id || ('id-' + Date.now()),
+      symbol: obj.symbol || '',
+      side: obj.side || '',
+      verdict: obj.verdict || '',
+      entryPrice: obj.entryPrice || null,
+      stopLoss: obj.stopLoss || null,
+      takeProfit: obj.takeProfit || null,
+      positionSizePercent: obj.positionSizePercent || null,
+      confidence: obj.confidence || null,
+      timestamp: obj.timestamp || new Date().toISOString()
+    };
+  };
+</script>
+</body>
+</html>
+
 </body>
 </html>
