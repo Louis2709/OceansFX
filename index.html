@@ -1,1 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TradeBuddy AI - Web Terminal</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{
+    --bg:#0f1113;
+    --panel:#141618;
+    --muted:#9aa3a8;
+    --accent:#00ff99;
+    --danger:#ff4d4d;
+    --card:#1b1d20;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:Inter,Segoe UI,system-ui,Arial;
+    background:linear-gradient(180deg,#0b0c0d 0%, #0f1113 100%);
+    color:#e6eef1;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    height:64px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:0 20px;
+    background:linear-gradient(90deg, rgba(0,0,0,0.25), rgba(0,0,0,0.05));
+    border-bottom:1px solid rgba(255,255,255,0.03);
+  }
+  .brand{
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+  .logo{
+    width:36px;height:36px;border-radius:6px;
+    background:linear-gradient(135deg,var(--accent),#00cc88);
+    box-shadow:0 4px 18px rgba(0,255,153,0.06);
+    display:flex;align-items:center;justify-content:center;font-weight:700;color:#07110a;
+  }
+  .title{font-weight:700;letter-spacing:0.4px}
+  .container{display:flex;height:calc(100vh - 64px)}
+  .main{flex:1;padding:22px;overflow:auto}
+  .side{width:320px;border-left:1px solid rgba(255,255,255,0.02);padding:20px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+  .upload{
+    border:2px dashed rgba(0,255,153,0.12);
+    background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+    padding:28px;border-radius:10px;text-align:center;cursor:pointer;
+    transition:box-shadow .18s,transform .12s;
+  }
+  .upload.drag{box-shadow:0 8px 30px rgba(0,255,153,0.06);transform:translateY(-4px)}
+  .upload h2{margin:0;font-size:18px;color:var(--accent)}
+  .upload p{margin:8px 0 0;color:var(--muted);font-size:13px}
+  input[type=file]{display:none}
+  .spinner{width:56px;height:56px;border-radius:50%;border:6px solid rgba(255,255,255,0.04);border-top-color:var(--accent);margin:18px auto;animation:spin 1s linear infinite;display:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .status{text-align:center;color:var(--muted);margin-top:8px;font-size:13px}
+  .card{background:var(--card);border-radius:10px;padding:14px;margin-top:18px;border:1px solid rgba(255,255,255,0.02)}
+  .preview img{max-width:100%;border-radius:6px;border:1px solid rgba(255,255,255,0.03)}
+  .row{display:flex;gap:12px;align-items:center}
+  .pill{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,0.02);font-weight:600}
+  .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  .result-item{background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.02)}
+  .signal-buy{color:#042f0f;background:linear-gradient(90deg,#00ff99,#00cc77);padding:8px;border-radius:6px;font-weight:700;display:inline-block}
+  .signal-sell{color:#2b0404;background:linear-gradient(90deg,#ff7a7a,#ff4d4d);padding:8px;border-radius:6px;font-weight:700;display:inline-block}
+  .metrics table{width:100%;border-collapse:collapse;margin-top:8px}
+  .metrics td{padding:8px;border-top:1px dashed rgba(255,255,255,0.02);font-size:14px}
+  .risk{background:linear-gradient(90deg,var(--danger),#ff6b6b);padding:12px;border-radius:8px;color:#fff;font-weight:700;margin-top:12px;box-shadow:0 6px 24px rgba(255,77,77,0.08)}
+  .history{max-height:60vh;overflow:auto}
+  .history-entry{padding:10px;border-radius:8px;background:rgba(255,255,255,0.01);margin-bottom:10px;font-size:13px}
+  .btn{display:inline-block;padding:10px 14px;border-radius:8px;background:var(--accent);color:#07110a;font-weight:700;border:none;cursor:pointer}
+  .muted{color:var(--muted);font-size:13px}
+  footer{padding:12px;text-align:center;color:var(--muted);font-size:13px}
+  @media(max-width:900px){.container{flex-direction:column}.side{width:100%;border-left:none;border-top:1px solid rgba(255,255,255,0.02)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">TB</div>
+    <div>
+      <div class="title">TradeBuddy AI</div>
+      <div class="muted">Web Terminal • Demo</div>
+    </div>
+  </div>
+</header>
 
+<div class="container">
+  <main class="main">
+    <div id="uploadZone" class="upload" tabindex="0" role="button" aria-label="Upload chart screenshot">
+      <h2>Drag & Drop Market Chart Screenshot</h2>
+      <p>or click to choose a file — PNG, JPG</p>
+      <input id="fileInput" type="file" accept="image/*">
+    </div>
+
+    <div id="spinner" class="spinner" aria-hidden="true"></div>
+    <div id="status" class="status"></div>
+
+    <div id="results" class="card" style="display:none">
+      <div class="preview" id="preview"></div>
+
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div>
+          <div id="signal" style="font-size:18px;font-weight:800"></div>
+          <div id="trend" class="muted" style="margin-top:6px"></div>
+        </div>
+        <div style="text-align:right">
+          <div id="confidence" class="pill"></div>
+          <div class="muted" style="margin-top:6px;font-size:13px">AI Confidence</div>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-item">
+          <div style="font-size:13px;color:var(--muted)">Entry Price</div>
+          <div id="entry" style="font-weight:700;margin-top:6px"></div>
+        </div>
+        <div class="result-item">
+          <div style="font-size:13px;color:var(--muted)">Stop Loss</div>
+          <div id="stoploss" style="font-weight:700;margin-top:6px"></div>
+        </div>
+        <div class="result-item">
+          <div style="font-size:13px;color:var(--muted)">Take Profit</div>
+          <div id="takeprofit" style="font-weight:700;margin-top:6px"></div>
+        </div>
+        <div class="result-item">
+          <div style="font-size:13px;color:var(--muted)">Suggested Position Size</div>
+          <div id="position" style="font-weight:700;margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div id="risk" class="risk"></div>
+
+      <div style="margin-top:12px;text-align:right">
+        <button id="resetBtn" class="btn">Reset</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="side">
+    <h3 style="margin:0 0 10px 0">Analysis History</h3>
+    <div id="history" class="history"></div>
+    <div style="margin-top:12px" class="muted">Each analysis is simulated for demo purposes only.</div>
+  </aside>
+</div>
+
+<footer>TradeBuddy AI • Demo — No live trading advice</footer>
+
+<script>
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const spinner = document.getElementById('spinner');
+  const status = document.getElementById('status');
+  const results = document.getElementById('results');
+  const preview = document.getElementById('preview');
+  const historyEl = document.getElementById('history');
+  const resetBtn = document.getElementById('resetBtn');
+
+  const signals = ["BUY","SELL"];
+  const trends = ["Bullish","Bearish","Sideways"];
+  const riskMsgs = [
+    "High volatility detected. Consider reducing position size.",
+    "Moderate risk environment. Use conservative sizing.",
+    "Low risk scenario. Conditions look favorable."
+  ];
+
+  function showSpinner(text){
+    spinner.style.display = "block";
+    status.textContent = text || "Analyzing chart…";
+  }
+  function hideSpinner(){
+    spinner.style.display = "none";
+    status.textContent = "";
+  }
+
+  function simulateAnalysis(file){
+    showSpinner("Analyzing chart with TradeBuddy AI...");
+    results.style.display = "none";
+    preview.innerHTML = "";
+
+    setTimeout(() => {
+      hideSpinner();
+
+      const signal = signals[Math.floor(Math.random()*signals.length)];
+      const trend = trends[Math.floor(Math.random()*trends.length)];
+      const confidence = (Math.random()*30 + 65).toFixed(1) + "%";
+      const entry = (Math.random()*120 + 980).toFixed(2);
+      const stoploss = (entry - (Math.random()*20 + 8)).toFixed(2);
+      const takeprofit = (parseFloat(entry) + (Math.random()*60 + 20)).toFixed(2);
+      const position = (Math.random()*2 + 0.5).toFixed(2) + "%";
+      const risk = riskMsgs[Math.floor(Math.random()*riskMsgs.length)];
+
+      document.getElementById('signal').innerHTML = signal === "BUY" ? '<span class="signal-buy">BUY</span>' : '<span class="signal-sell">SELL</span>';
+      document.getElementById('trend').textContent = trend;
+      document.getElementById('confidence').textContent = confidence;
+      document.getElementById('entry').textContent = "$" + entry;
+      document.getElementById('stoploss').textContent = "$" + stoploss;
+      document.getElementById('takeprofit').textContent = "$" + takeprofit;
+      document.getElementById('position').textContent = position;
+      document.getElementById('risk').textContent = risk;
+
+      if(file){
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          preview.innerHTML = '<img src="'+e.target.result+'" alt="Chart preview">';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        preview.innerHTML = '<div style="padding:18px;border-radius:8px;background:rgba(255,255,255,0.01);text-align:center;color:var(--muted)">No preview available</div>';
+      }
+
+      results.style.display = "block";
+
+      const entryEl = document.createElement('div');
+      entryEl.className = 'history-entry';
+      entryEl.textContent = `${new Date().toLocaleString()} — ${signal} • ${trend} • ${confidence}`;
+      historyEl.prepend(entryEl);
+    }, 1800 + Math.random()*1200);
+  }
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('drag');
+  });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) simulateAnalysis(f);
+  });
+
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files && fileInput.files[0];
+    if(f) simulateAnalysis(f);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    results.style.display = "none";
+    preview.innerHTML = "";
+    status.textContent = "";
+  });
+
+  // If you want to test without a file, uncomment:
+  // simulateAnalysis(null);
+</script>
+</body>
+</html>
