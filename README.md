@@ -1,3 +1,6 @@
+[![Pages](https://github.com/Louis2709/OceansFX/actions/workflows/pages-deploy.yml/badge.svg)](https://louis2709.github.io/OceansFX/)
+
+
 # TradeBuddy AI - Web Terminal (OceansFX)
 
 A single‑file static demo of TradeBuddy AI — a dark‑mode web terminal that simulates chart analysis with drag‑and‑drop upload, preview, and a results dashboard.
