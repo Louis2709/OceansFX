@@ -1,8 +1,3 @@
-# edit index.html locally, add snippet in <head>, then:
-git add index.html
-git commit -m "Add GA4 tracking snippet"
-git push origin main
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -293,6 +288,85 @@ git push origin main
 </script>
 </body>
 </html>
+<!-- Persisted history, getLatestAnalysis, and download wiring -->
+<button id="download-result-btn" style="display:none;">Download Result</button>
 
+<script>
+/* Restore persisted history safely */
+(function() {
+  try {
+    const raw = localStorage.getItem('tradebuddy_history');
+    window.tradebuddyHistory = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.warn('tradebuddy: invalid localStorage, clearing', e);
+    try { localStorage.removeItem('tradebuddy_history'); } catch(_) {}
+    window.tradebuddyHistory = [];
+  }
+})();
+
+/* Ensure history exists */
+window.tradebuddyHistory = window.tradebuddyHistory || [];
+
+/* Return the latest analysis or null */
+window.getLatestAnalysis = function() {
+  try {
+    if (!window.tradebuddyHistory || window.tradebuddyHistory.length === 0) return null;
+    return window.tradebuddyHistory[0];
+  } catch (e) {
+    console.error('getLatestAnalysis error', e);
+    return null;
+  }
+};
+
+/* Safe push helper to add a new analysis and persist */
+window.pushAnalysis = function(obj) {
+  try {
+    const entry = Object.assign({
+      id: 'id-' + Date.now(),
+      symbol: obj.symbol || '',
+      side: obj.side || '',
+      verdict: obj.verdict || '',
+      entryPrice: obj.entryPrice || null,
+      stopLoss: obj.stopLoss || null,
+      takeProfit: obj.takeProfit || null,
+      positionSizePercent: obj.positionSizePercent || null,
+      confidence: obj.confidence || null,
+      timestamp: obj.timestamp || new Date().toISOString()
+    }, obj);
+    window.tradebuddyHistory.unshift(entry);
+    if (window.tradebuddyHistory.length > 200) window.tradebuddyHistory.length = 200;
+    try { localStorage.setItem('tradebuddy_history', JSON.stringify(window.tradebuddyHistory)); } catch(e) { console.warn('Could not persist history', e); }
+    return entry;
+  } catch (e) {
+    console.error('pushAnalysis failed', e);
+    return null;
+  }
+};
+
+/* Download button handler (uses getLatestAnalysis) */
+(function wireDownloadButton() {
+  const btn = document.getElementById('download-result-btn');
+  if (!btn) return;
+  btn.style.display = 'inline-block';
+  btn.addEventListener('click', () => {
+    const latest = window.getLatestAnalysis ? window.getLatestAnalysis() : null;
+    if (!latest) {
+      alert('No analysis available to download.');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(latest, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tradebuddy-analysis-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    // small visual confirmation
+    console.log('Downloaded analysis', latest.id || latest.timestamp);
+  });
+})();
+</script>
 </body>
 </html>
